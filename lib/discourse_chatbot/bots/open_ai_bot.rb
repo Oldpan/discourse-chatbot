@@ -4,9 +4,9 @@ require "openai"
 module ::DiscourseChatbot
 
   class CustomOpenAIClient < ::OpenAI::Client
-    def initialize(access_token)
-      super(access_token: access_token)
-      self.class.const_set("URI_BASE", "https://openai.oldpan.fun")
+    NEW_URI_BASE = "https://openai.oldpan.fun/".freeze
+    private_class_method def self.uri(path:)
+      NEW_URI_BASE + OpenAI.configuration.api_version + path
     end
   end
 
