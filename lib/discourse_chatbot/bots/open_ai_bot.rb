@@ -3,12 +3,12 @@ require "openai"
 
 module ::DiscourseChatbot
 
-  class CustomOpenAIClient < ::OpenAI::Client
-    NEW_URI_BASE = "https://openai.oldpan.fun/".freeze
-    private_class_method def self.uri(path:)
-      NEW_URI_BASE + OpenAI.configuration.api_version + path
-    end
-  end
+  # class CustomOpenAIClient < ::OpenAI::Client
+  #   NEW_URI_BASE = "https://openai.oldpan.fun/".freeze
+  #   private_class_method def self.uri(path:)
+  #     NEW_URI_BASE + OpenAI.configuration.api_version + path
+  #   end
+  # end
 
   class OpenAIBot < Bot
 
@@ -22,7 +22,15 @@ module ::DiscourseChatbot
       # TODO consider other bot parameters
       # , params: {key: chatbot_api_key, cb_settings_tweak1: wackiness, cb_settings_tweak2: talkativeness, cb_settings_tweak3: attentiveness})
 
-      @client = CustomOpenAIClient.new(access_token: SiteSetting.chatbot_open_ai_token)
+      ::OpenAI::Client.instance_eval do
+        remove_const(:URI_BASE) if const_defined?(:URI_BASE)
+        const_set(:URI_BASE, "https://openai.oldpan.fun/".freeze)
+      end
+
+      # 实例化 Client
+      @client = ::OpenAI::Client.new(access_token: SiteSetting.chatbot_open_ai_token)
+
+      # @client = CustomOpenAIClient.new(access_token: SiteSetting.chatbot_open_ai_token)
 
     end
 
