@@ -27,8 +27,6 @@ module ::DiscourseChatbot
       # 实例化 Client
       @client = ::OpenAI::Client.new(access_token: SiteSetting.chatbot_open_ai_token)
 
-      # @client = CustomOpenAIClient.new(access_token: SiteSetting.chatbot_open_ai_token)
-
     end
 
     def get_response(prompt)
