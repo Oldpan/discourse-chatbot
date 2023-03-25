@@ -19,9 +19,6 @@ module ::DiscourseChatbot
       #   config.request_timeout = 25
       # end
 
-      # TODO consider other bot parameters
-      # , params: {key: chatbot_api_key, cb_settings_tweak1: wackiness, cb_settings_tweak2: talkativeness, cb_settings_tweak3: attentiveness})
-
       ::OpenAI::Client.instance_eval do
         remove_const(:URI_BASE) if const_defined?(:URI_BASE)
         const_set(:URI_BASE, "https://openai.oldpan.fun/".freeze)
@@ -43,7 +40,16 @@ module ::DiscourseChatbot
               temperature: SiteSetting.chatbot_request_temperature / 100.0
           })
 
-          final_text = response.dig("choices", 0, "message", "content")
+        if response.parsed_response["error"]
+          begin
+            raise StandardError, response.parsed_response["error"]["message"]
+          rescue => e
+            Rails.logger.error ("OpenAIBot: There was a problem: #{e}")
+            I18n.t('chatbot.errors.general')
+          end
+        else
+          response.dig("choices", 0, "message", "content")
+        end
       else
         response = @client.completions(
           parameters: {
@@ -54,10 +60,15 @@ module ::DiscourseChatbot
           })
 
         if response.parsed_response["error"]
-          raise StandardError, response.parsed_response["error"]["message"]
+          begin
+            raise StandardError, response.parsed_response["error"]["message"]
+          rescue => e
+            Rails.logger.error ("OpenAIBot: There was a problem: #{e}")
+            I18n.t('chatbot.errors.general')
+          end
+        else
+          response["choices"][0]["text"]
         end
-
-        final_text = response["choices"][0]["text"]
       end
     end
 
