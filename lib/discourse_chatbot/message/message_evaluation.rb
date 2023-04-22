@@ -6,7 +6,7 @@ module ::DiscourseChatbot
     DIRECT_MESSAGE = "DirectMessage"
 
     def on_submission(submission)
-      puts "2. evaluation"
+      ::DiscourseChatbot.progress_debug_message("2. evaluation")
 
       chat_message = submission
 
@@ -27,16 +27,20 @@ module ::DiscourseChatbot
       prior_message = ::Chat::Message.where(chat_channel_id: channel_id).second_to_last
       replied_to_user = nil
       if in_reply_to_id
-        puts "2.5 found it's a reply to a prior message"
+        ::DiscourseChatbot.progress_debug_message("2.5 found it's a reply to a prior message")
         replied_to_user = ::Chat::Message.find(in_reply_to_id).user
       end
 
       channel = ::Chat::Channel.find(channel_id)
-      direct_chat = channel.chatable_type == DIRECT_MESSAGE
-      channel_user_count = channel.user_count
+      direct_message_channel = channel.chatable_type == DIRECT_MESSAGE
+      direct_message_channel_user_count = nil
+      if direct_message_channel
+        # we don't need to calculate this unless it's direct message so keep within if statement to improve performance
+        direct_message_channel_user_count = ::Chat::UserChatChannelMembership.where(chat_channel_id: channel_id).count
+      end
       bot_chat_channel = (bot_user.user_chat_channel_memberships.where(chat_channel_id: channel_id).count > 0)
 
-      talking_to_bot = (direct_chat && bot_chat_channel && channel_user_count < 3) || (replied_to_user && replied_to_user.id == bot_user_id)
+      talking_to_bot = (direct_message_channel && bot_chat_channel && direct_message_channel_user_count && direct_message_channel_user_count < 3) || (replied_to_user && replied_to_user.id == bot_user_id)
 
       if bot_user && (user_id != bot_user_id) && (mentions_bot_name || talking_to_bot)
 
@@ -44,7 +48,7 @@ module ::DiscourseChatbot
           bot_user.user_chat_channel_memberships.create!(chat_channel: channel, following: true)
           Jobs::Chat::UpdateUserCountsForChannels.new.execute
           channel.reload
-          puts "2.6 added bot to channel"
+          ::DiscourseChatbot.progress_debug_message("2.6 added bot to channel")
         end
 
         opts = {
@@ -56,7 +60,9 @@ module ::DiscourseChatbot
             over_quota: over_quota,
             message_body: message_contents.gsub(bot_username.downcase, '').gsub(bot_username, '')
           }
-        puts "3. invocation"
+
+        ::DiscourseChatbot.progress_debug_message("3. invocation")
+
         job_class = ::Jobs::ChatbotReplyJob
         invoke_background_job(job_class, opts)
         true
